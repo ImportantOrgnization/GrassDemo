@@ -1,0 +1,28 @@
+﻿#pragma kernel CSCulling
+
+StructuredBuffer<float3> posAllBuffer;
+RWStructuredBuffer<float3> posVisibleBuffer;
+RWStructuredBuffer<int> bufferWithArgs;
+float3 cmrPos;
+float3 cmrDir;
+float cmrHalfFov;
+float4x4 matrix_VP;
+Texture2D HZB_Depth;
+float useHzb;
+
+static float PI = 3.1415926;
+
+[numthreads(16,16,1)]
+void CSCulling (uint3 id : SV_DispatchThreadID)
+{
+    uint index = id.y * 400+ id.x;
+    float3 itemPos = posAllBuffer[index];
+	float3 itemDir = normalize(itemPos - cmrPos);
+    float4 clipPos = mul(matrix_VP, float4(itemPos-cmrDir *0.2, 1));
+    if (max(abs(clipPos.x), abs(clipPos.y)) > clipPos.w+0.7)    //shader入门精要 p83,感谢冯女神！
+        return;
+
+    int currentIndex;
+    InterlockedAdd(bufferWithArgs[1], 1, currentIndex); //InterlockedAdd 个人理解为防止线程竞争， 类似于 lock(obj) { }
+	posVisibleBuffer[currentIndex] = itemPos;
+}
