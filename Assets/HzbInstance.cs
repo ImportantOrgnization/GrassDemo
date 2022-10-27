@@ -52,6 +52,7 @@ public class HzbInstance : MonoBehaviour
         cullingComputeShader.SetBuffer(CSCullingID, "posVisibleBuffer", posVisibleBuffer);
 
         drawMat.SetBuffer("posVisibleBuffer", posVisibleBuffer);
+        drawMat.EnableKeyword("_GPUGRASS");
  
     }
     
@@ -100,6 +101,12 @@ public class HzbInstance : MonoBehaviour
 		 
         staticRandomID++;
         return v;
+    }
+
+
+    private void OnDisable()
+    {
+        drawMat.DisableKeyword("_GPUGRASS");
     }
 
     private void OnGUI()
