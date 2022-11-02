@@ -9,8 +9,8 @@ float cmrHalfFov;
 float4x4 matrix_VP;
 Texture2D HZB_Depth;
 float useHzb;
+float ReversedZ;
 
-static float PI = 3.1415926;
 
 [numthreads(16,16,1)]
 void CSCulling (uint3 id : SV_DispatchThreadID)
@@ -21,6 +21,30 @@ void CSCulling (uint3 id : SV_DispatchThreadID)
     float4 clipPos = mul(matrix_VP, float4(itemPos-cmrDir *0.2, 1));
     if (max(abs(clipPos.x), abs(clipPos.y)) > clipPos.w+0.7)    //shader入门精要 p83,感谢冯女神！
         return;
+    if(useHzb > 0.5)
+    {
+        clipPos.xyz /= clipPos.w; //NDC coords
+        clipPos.xy = clipPos.xy * 0.5 + 0.5 ;// [-1,1] -> [0,1]
+        float halfH = (tan(cmrHalfFov * 3.1415926 / 180)* clipPos.w);
+        float pixHeight = 0.2 / halfH * 1024;  //0.2 为草的半径，所以0.2 / halfH * 1024 = 草的像素高度
+
+        uint mips = ( uint)clamp(log2(pixHeight),0,7);  //通过高度所占的像素来确定需要采样的深度图的mip等级，越远需要的精度越高，1个像素mip0,2个像素mip1,4个像素mip2
+        uint texScale = 1 << mips;
+        uint2 uv = uint2( clipPos.xy * (1024 / texScale));
+        if(ReversedZ > 0.5){
+            float minD =min (min(HZB_Depth.mips[mips][uv.xy + uint2(0, 0)].r, 
+                                 HZB_Depth.mips[mips][uv.xy + uint2(0, 1)].r), 
+                             min(HZB_Depth.mips[mips][uv.xy + uint2(1, 0)].r,    
+                                 HZB_Depth.mips[mips][uv.xy + uint2(1, 1)].r));
+            if (minD > clipPos.z)return;
+        }else{
+            float maxD = max (max(HZB_Depth.mips[0][uv.xy + uint2(0, 0)].r, 
+                                 HZB_Depth.mips[0][uv.xy + uint2(0, 1)].r), 
+                             max(HZB_Depth.mips[0][uv.xy + uint2(1, 0)].r,    
+                                 HZB_Depth.mips[0][uv.xy + uint2(1, 1)].r));
+            if (maxD < clipPos.z)return;
+        }
+    }
 
     int currentIndex;
     InterlockedAdd(bufferWithArgs[1], 1, currentIndex); //InterlockedAdd 个人理解为防止线程竞争， 类似于 lock(obj) { }

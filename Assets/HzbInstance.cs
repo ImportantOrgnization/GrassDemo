@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Rendering;
 
 public class HzbInstance : MonoBehaviour
@@ -50,7 +47,7 @@ public class HzbInstance : MonoBehaviour
         cullingComputeShader.SetBuffer(CSCullingID, "bufferWithArgs", bufferWithArgs);
         cullingComputeShader.SetBuffer(CSCullingID, "posAllBuffer", posBuffer);
         cullingComputeShader.SetBuffer(CSCullingID, "posVisibleBuffer", posVisibleBuffer);
-
+        cullingComputeShader.SetFloat("ReversedZ",SystemInfo.usesReversedZBuffer?1.0f:0.0f);
         drawMat.SetBuffer("posVisibleBuffer", posVisibleBuffer);
         drawMat.EnableKeyword("_GPUGRASS");
  
@@ -81,15 +78,17 @@ public class HzbInstance : MonoBehaviour
         var m = GL.GetGPUProjectionMatrix( Camera.main.projectionMatrix,false) * Camera.main.worldToCameraMatrix;
 
         //高版本 可用  computeShader.SetMatrix("matrix_VP", m); 代替 下面数组传入
+        /*
         float[] mlist = new float[] {
             m.m00,m.m10,m.m20,m.m30,
             m.m01,m.m11,m.m21,m.m31,
             m.m02,m.m12,m.m22,m.m32,
             m.m03,m.m13,m.m23,m.m33
         };
-
-
+        
         cullingComputeShader.SetFloats("matrix_VP", mlist);
+        */
+        cullingComputeShader.SetMatrix("matrix_VP",m);
         cullingComputeShader.Dispatch(CSCullingID, 400 / 16, 400 / 16, 1);
     }
 
